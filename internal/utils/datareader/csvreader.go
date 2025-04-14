@@ -67,7 +67,6 @@ func (*SimpleCSVReader) Read(file io.Reader) (headers []string, records []float6
 		fmt.Println("读取标题行出错:", err)
 		return nil, nil, err
 	}
-	fmt.Println("标题:", header)
 	headers = header
 
 	// 逐行读取数据
