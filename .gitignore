@@ -1,0 +1,57 @@
+# 二进制文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# 可执行文件
+/bin/
+/dist/
+
+# 测试二进制文件
+*.test
+*.pprof
+
+# 依赖目录
+/vendor/
+/go.mod
+/go.sum
+
+# 开发环境文件
+.env
+.env.local
+.env.*.local
+
+# IDE 配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 构建输出
+/build/
+/out/
+
+# 本地开发缓存
+debug
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 覆盖率文件
+*.out
+coverage.html
+profile.cov
+
+# Go 工作区文件
+go.work
+go.work.sum
+
+# 特定编辑器文件
+*.sublime-workspace
+*.sublime-project
