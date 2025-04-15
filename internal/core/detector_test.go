@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/kio235/sampEn_SCFD_backend/internal/utils/datareader"
@@ -14,7 +13,7 @@ func TestLoadRecords(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.2)
+	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.2, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -31,7 +30,7 @@ func TestCompute(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.2)
+	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.2, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -52,7 +51,7 @@ func TestCheck(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.3)
+	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.3, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -60,9 +59,8 @@ func TestCheck(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	faultCount, err := detector.Check()
+	err = detector.Check()
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(faultCount)
 }

@@ -16,6 +16,12 @@ type SampEnCalc struct {
 	computed    bool
 }
 
+func (c *SampEnCalc) Clone() *SampEnCalc {
+	vol := make([]float64, len(c.voltageData))
+	copy(vol, c.voltageData)
+	return &SampEnCalc{c.m, c.rCoeff, vol, c.n, c.sampEn, c.computed}
+}
+
 func NewSampEnCalc(m int, rCoeff float64) (*SampEnCalc, error) {
 	if m < 1 {
 		return nil, fmt.Errorf("m must >=1")

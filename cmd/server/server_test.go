@@ -66,7 +66,7 @@ func TestMain(t *testing.T) {
 			return
 		}
 
-		detector, err := core.NewDetector(2, 0.2, 100, 30, 0.2, 0.3)
+		detector, err := core.NewDetector(2, 0.2, 100, 30, 0.2, 0.3, 5)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to create detector",
@@ -80,7 +80,7 @@ func TestMain(t *testing.T) {
 			})
 			return
 		}
-		_, err = detector.Check()
+		err = detector.Check()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Check data error. Invalid data",

@@ -9,6 +9,9 @@
 /bin/
 /dist/
 
+/test/
+*
+
 # 测试二进制文件
 *.test
 *.pprof
