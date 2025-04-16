@@ -12,19 +12,20 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// Detector 使用样品熵(package sampen)检测一个电压序列是否存在故障。
 type Detector struct {
-	m                 int
-	rCoeff            float64
-	windowSize        int
-	stepSize          int
-	relativeThreshold float64
-	absoluteThreshold float64
-	faultThreshold    int
-	records           batteryRecord
-	HasRecords        bool
-	calc              *sampen.SampEnCalc
-	SampEnMatrix      [][]float64
-	FaultInfos        []FaultInfo
+	m                 int                // 样品熵参数 m
+	rCoeff            float64            // 样品熵参数 r coefficient
+	windowSize        int                // 滑动窗口大小
+	stepSize          int                // 滑动窗口步长
+	relativeThreshold float64            // 检测目标样品熵与其他样品熵的相对差异阈值
+	absoluteThreshold float64            // 检测目标样品熵与其他样品熵的相对差异阈值
+	faultThreshold    int                // 出现连续faultThreshold个异常点则视为错误
+	records           batteryRecord      // 电池数据
+	HasRecords        bool               // 是否已加载电池数据
+	calc              *sampen.SampEnCalc // 样品熵检测结构体
+	SampEnMatrix      [][]float64        // 样品熵结果
+	FaultInfos        []FaultInfo        // 错误检测结果
 }
 
 // NewDetector 创建一个新 Detector
@@ -81,98 +82,62 @@ func NewDetector(opts ...DetectorOption) (*Detector, error) {
 	return d, nil
 }
 
-// SetArgs 调整 Detector 参数
+// LoadRecords 加载电池数据
 //
-// Parameters:
-//
-//	m - 参数 m
-//	rCoeff - r 系数
-//	wd - 窗口大小 (window size)
-//	st - 步长 (step)
-//	rel - 相对差异阈值 (默认 20%)
-//	abs - 绝对差异阈值 (默认 0.2)
-// func (d *Detector) SetArgs(m int, rCoeff float64, wd int, st int, rel float64, abs float64, cnt int) error {
-// 	calc, err := sampen.NewSampEnCalc(m, rCoeff)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if wd <= 0 {
-// 		return fmt.Errorf("window size must > 0")
-// 	}
-// 	if st <= 0 {
-// 		return fmt.Errorf("step must > 0")
-// 	}
-// 	if wd < st {
-// 		return fmt.Errorf("windows size must > step")
-// 	}
-// 	if rel < 0 {
-// 		return fmt.Errorf("rel threshold must >= 0")
-// 	}
-// 	if abs < 0 {
-// 		return fmt.Errorf("abs threshold must >= 0")
-// 	}
-// 	if cnt < 1 {
-// 		return fmt.Errorf("cnt must >=1")
-// 	}
-// 	d.calc = calc
-// 	d.windowSize = wd
-// 	d.step = st
-// 	d.relThreshold = rel
-// 	d.absThreshold = abs
-// 	d.FaultCount = cnt
-// 	return nil
-// }
-
-func (d *Detector) LoadRecords(cel []string, vol []float64) error {
-	if len(cel) < 3 {
+//	cellsName - 每个电池编号
+//	voltages - 电池电压的一维数组
+func (d *Detector) LoadRecords(cellsName []string, voltages []float64) error {
+	if len(cellsName) < 3 {
 		return fmt.Errorf("Must have more than 2 cells.")
 	}
-	if len(vol) == 0 {
+	if len(voltages) == 0 {
 		return fmt.Errorf("Record is empty.")
 	}
-	if !mathmethod.IsMultiple(len(vol), len(cel)) {
+	if !mathmethod.IsMultiple(len(voltages), len(cellsName)) {
 		return fmt.Errorf("Length of record is not an integer multiple of cell length.")
 	}
 
-	d.records.voltage = make([]float64, len(vol))
-	copy(d.records.voltage, vol)
-	d.records.cell = make([]string, len(cel))
-	copy(d.records.cell, cel)
+	d.records.voltage = make([]float64, len(voltages))
+	copy(d.records.voltage, voltages)
+	d.records.cell = make([]string, len(cellsName))
+	copy(d.records.cell, cellsName)
 
-	d.records.recordCount = len(vol) / len(cel)
-	d.records.cellCount = len(cel)
+	d.records.recordCount = len(voltages) / len(cellsName)
+	d.records.cellCount = len(cellsName)
 	d.HasRecords = true
 	return nil
 }
 
-// func (d *Detector) Compute() error {
-// 	vol := mathmethod.ConvertTo2DShared(d.records.voltage, d.records.cellCount, d.records.recordCount)
-// 	sampEnResult := make([][]float64, 0)
-// 	for cel := range d.records.cellCount {
-// 		sampEnResult = append(sampEnResult, make([]float64, 0))
-// 		for i := 0; i <= d.records.recordCount-d.windowSize; i += d.step {
-// 			err := d.calc.LoadData(vol[cel][i : i+d.windowSize])
-// 			if err != nil {
-// 				return err
-// 			}
-// 			en, err := d.calc.Compute()
-// 			if err != nil {
-// 				return err
-// 			}
-// 			sampEnResult[cel] = append(sampEnResult[cel], en)
-// 		}
-// 	}
-// 	d.SampEnMatrix = sampEnResult
-// 	return nil
-// }
+// ComputeSingle 使用滑动窗口计算电压序列的样品熵, 没有进行多核优化
+func (d *Detector) ComputeSingle() error {
+	vol := mathmethod.ConvertTo2DShared(d.records.voltage, d.records.cellCount, d.records.recordCount)
+	sampEnResult := make([][]float64, 0)
+	for cel := range d.records.cellCount {
+		sampEnResult = append(sampEnResult, make([]float64, 0))
+		for i := 0; i <= d.records.recordCount-d.windowSize; i += d.stepSize {
+			err := d.calc.LoadData(vol[cel][i : i+d.windowSize])
+			if err != nil {
+				return err
+			}
+			en, err := d.calc.Compute()
+			if err != nil {
+				return err
+			}
+			sampEnResult[cel] = append(sampEnResult[cel], en)
+		}
+	}
+	d.SampEnMatrix = sampEnResult
+	return nil
+}
 
+// ComputeSingle 使用滑动窗口计算电压序列的样品熵, 使用 goroutine 进行多核优化
 func (d *Detector) Compute() error {
 	vol := mathmethod.ConvertTo2DShared(d.records.voltage, d.records.cellCount, d.records.recordCount)
 	sampEnResult := make([][]float64, d.records.cellCount)
 
 	g, ctx := errgroup.WithContext(context.Background())
 
-	for cel := 0; cel < d.records.cellCount; cel++ {
+	for cel := range d.records.cellCount {
 		cel := cel
 		g.Go(func() error {
 			cellVol := vol[cel]
