@@ -13,60 +13,72 @@ import (
 )
 
 type Detector struct {
-	windowSize   int
-	step         int
-	relThreshold float64
-	absThreshold float64
-	records      batteryRecord
-	HasRecords   bool
-	calc         *sampen.SampEnCalc
-	SampEnMatrix [][]float64
-	FaultInfos   []FaultInfo
-	FaultCount   int
+	m                 int
+	rCoeff            float64
+	windowSize        int
+	stepSize          int
+	relativeThreshold float64
+	absoluteThreshold float64
+	faultThreshold    int
+	records           batteryRecord
+	HasRecords        bool
+	calc              *sampen.SampEnCalc
+	SampEnMatrix      [][]float64
+	FaultInfos        []FaultInfo
 }
 
 // NewDetector 创建一个新 Detector
 //
-// Parameters:
-//
-//		m - 参数 m
-//		rCoeff - r 系数
-//		wd - 窗口大小 (window size)
-//		st - 步长 (step)
-//		rel - 相对差异阈值 (默认 20%)
-//		abs - 绝对差异阈值 (默认 0.2)
-//	 cnt - 出现连续cnt个异常点则视为错误
-func NewDetector(m int, rCoeff float64, wd int, st int, rel float64, abs float64, cnt int) (*Detector, error) {
-	var d Detector
+//	m - 参数 m (默认2)
+//	rCoeff - r 系数 (默认0.2)
+//	windowSize - 窗口大小 (window size) (默认100)
+//	stepSize - 步长 (step) (默认1)
+//	relativeThreshold - 相对差异阈值 (默认 30%)
+//	absoluteThreshold - 绝对差异阈值 (默认 0.4)
+//	faultThreshold - 出现连续faultThreshold个异常点则视为错误 (默认5)
+func NewDetector(opts ...DetectorOption) (*Detector, error) {
+	d := &Detector{
+		m:                 2,
+		rCoeff:            0.2,
+		windowSize:        100,
+		stepSize:          1,
+		relativeThreshold: 0.3,
+		absoluteThreshold: 0.4,
+		faultThreshold:    5,
+		SampEnMatrix:      make([][]float64, 0),
+		FaultInfos:        make([]FaultInfo, 0),
+	}
+	for _, opt := range opts {
+		opt(d)
+	}
+
+	if d.m < 1 {
+		return nil, fmt.Errorf("m must >=1")
+	}
+	if d.rCoeff <= 0 {
+		return nil, fmt.Errorf("r must >0")
+	}
+	if d.windowSize <= 0 {
+		return nil, fmt.Errorf("window size must > 0")
+	}
+	if d.stepSize <= 0 {
+		return nil, fmt.Errorf("step must > 0")
+	}
+	if d.relativeThreshold < 0 {
+		return nil, fmt.Errorf("relative threshold must >= 0")
+	}
+	if d.absoluteThreshold < 0 {
+		return nil, fmt.Errorf("absolute threshold must >= 0")
+	}
+	if d.faultThreshold < 1 {
+		return nil, fmt.Errorf("fault threshold must >=1")
+	}
 	var err error
-	d.calc, err = sampen.NewSampEnCalc(m, rCoeff)
+	d.calc, err = sampen.NewSampEnCalc(d.m, d.rCoeff)
 	if err != nil {
 		return nil, err
 	}
-	if wd <= 0 {
-		return nil, fmt.Errorf("window size must > 0")
-	}
-	if st <= 0 {
-		return nil, fmt.Errorf("step must > 0")
-	}
-	if wd < st {
-		return nil, fmt.Errorf("windows size must > step")
-	}
-	if rel < 0 {
-		return nil, fmt.Errorf("rel threshold must >= 0")
-	}
-	if abs < 0 {
-		return nil, fmt.Errorf("abs threshold must >= 0")
-	}
-	if cnt < 1 {
-		return nil, fmt.Errorf("cnt must >=1")
-	}
-	d.windowSize = wd
-	d.step = st
-	d.relThreshold = rel
-	d.absThreshold = abs
-	d.FaultCount = cnt
-	return &d, nil
+	return d, nil
 }
 
 // SetArgs 调整 Detector 参数
@@ -79,37 +91,37 @@ func NewDetector(m int, rCoeff float64, wd int, st int, rel float64, abs float64
 //	st - 步长 (step)
 //	rel - 相对差异阈值 (默认 20%)
 //	abs - 绝对差异阈值 (默认 0.2)
-func (d *Detector) SetArgs(m int, rCoeff float64, wd int, st int, rel float64, abs float64, cnt int) error {
-	calc, err := sampen.NewSampEnCalc(m, rCoeff)
-	if err != nil {
-		return err
-	}
-	if wd <= 0 {
-		return fmt.Errorf("window size must > 0")
-	}
-	if st <= 0 {
-		return fmt.Errorf("step must > 0")
-	}
-	if wd < st {
-		return fmt.Errorf("windows size must > step")
-	}
-	if rel < 0 {
-		return fmt.Errorf("rel threshold must >= 0")
-	}
-	if abs < 0 {
-		return fmt.Errorf("abs threshold must >= 0")
-	}
-	if cnt < 1 {
-		return fmt.Errorf("cnt must >=1")
-	}
-	d.calc = calc
-	d.windowSize = wd
-	d.step = st
-	d.relThreshold = rel
-	d.absThreshold = abs
-	d.FaultCount = cnt
-	return nil
-}
+// func (d *Detector) SetArgs(m int, rCoeff float64, wd int, st int, rel float64, abs float64, cnt int) error {
+// 	calc, err := sampen.NewSampEnCalc(m, rCoeff)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if wd <= 0 {
+// 		return fmt.Errorf("window size must > 0")
+// 	}
+// 	if st <= 0 {
+// 		return fmt.Errorf("step must > 0")
+// 	}
+// 	if wd < st {
+// 		return fmt.Errorf("windows size must > step")
+// 	}
+// 	if rel < 0 {
+// 		return fmt.Errorf("rel threshold must >= 0")
+// 	}
+// 	if abs < 0 {
+// 		return fmt.Errorf("abs threshold must >= 0")
+// 	}
+// 	if cnt < 1 {
+// 		return fmt.Errorf("cnt must >=1")
+// 	}
+// 	d.calc = calc
+// 	d.windowSize = wd
+// 	d.step = st
+// 	d.relThreshold = rel
+// 	d.absThreshold = abs
+// 	d.FaultCount = cnt
+// 	return nil
+// }
 
 func (d *Detector) LoadRecords(cel []string, vol []float64) error {
 	if len(cel) < 3 {
@@ -165,7 +177,7 @@ func (d *Detector) Compute() error {
 		g.Go(func() error {
 			cellVol := vol[cel]
 			recordCount := len(cellVol)
-			step := d.step
+			step := d.stepSize
 			windowSize := d.windowSize
 
 			// 预计算结果切片大小
@@ -273,11 +285,11 @@ func (d *Detector) Check() error {
 				other = append(other, d.SampEnMatrix[c][t])
 			}
 			mean := mathmethod.Mean(other)
-			if math.Abs(d.SampEnMatrix[cel][t]-mean) >= d.absThreshold {
-				if math.Abs(d.SampEnMatrix[cel][t]-mean)/mean >= d.relThreshold {
+			if math.Abs(d.SampEnMatrix[cel][t]-mean) >= d.absoluteThreshold {
+				if math.Abs(d.SampEnMatrix[cel][t]-mean)/mean >= d.relativeThreshold {
 					count++
-					if count >= d.FaultCount {
-						d.FaultInfos = append(d.FaultInfos, FaultInfo{t*d.step + d.windowSize/2, cel})
+					if count >= d.faultThreshold {
+						d.FaultInfos = append(d.FaultInfos, FaultInfo{t*d.stepSize + d.windowSize/2, cel})
 					}
 					continue
 				}

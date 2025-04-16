@@ -13,7 +13,7 @@ func TestLoadRecords(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.2, 1)
+	detector, err := NewDetector()
 	if err != nil {
 		t.Error(err)
 	}
@@ -30,7 +30,7 @@ func TestCompute(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.2, 1)
+	detector, err := NewDetector()
 	if err != nil {
 		t.Error(err)
 	}
@@ -51,7 +51,7 @@ func TestCheck(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	detector, err := NewDetector(2, 0.2, 100, 30, 0.2, 0.3, 1)
+	detector, err := NewDetector()
 	if err != nil {
 		t.Error(err)
 	}

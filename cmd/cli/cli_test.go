@@ -27,7 +27,7 @@ func BenchmarkProcessWithoutIO(b *testing.B) {
 
 	b.ResetTimer() // 重置计时器，排除准备阶段
 	for i := 0; i < b.N; i++ {
-		detector, err := core.NewDetector(2, 0.2, 100, 1, 0.2, 0.1, 1)
+		detector, err := core.NewDetector()
 		if err != nil {
 			b.Fatal(err)
 		}

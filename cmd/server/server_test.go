@@ -66,7 +66,7 @@ func TestMain(t *testing.T) {
 			return
 		}
 
-		detector, err := core.NewDetector(2, 0.2, 100, 30, 0.2, 0.3, 5)
+		detector, err := core.NewDetector()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to create detector",

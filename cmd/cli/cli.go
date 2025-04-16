@@ -13,18 +13,18 @@ func processFile(file string) error {
 	if err != nil {
 		return err
 	}
-	detector, err := core.NewDetector(2, 0.2, 100, 1, 0.2, 0.1, 5)
+	detector, err := core.NewDetector()
 	if err != nil {
 		return err
 	}
 	detector.LoadRecords(headers, records)
 	err = detector.Check()
-	// fmt.Println(detector.FaultInfos)
+	fmt.Println(detector.FaultInfos)
 	return err
 }
 
 func main() {
-	file := "/home/kio/code/sampEn_SCFD/sampEn_SCFD_backend/data/big.csv"
+	file := "../../data/big.csv"
 	err := processFile(file)
 	if err != nil {
 		fmt.Println(err)
