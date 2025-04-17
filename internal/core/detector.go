@@ -109,6 +109,9 @@ func (d *Detector) LoadRecords(cellsName []string, voltages []float64) error {
 }
 
 // ComputeSingle 使用滑动窗口计算电压序列的样品熵, 没有进行多核优化
+//
+// 该方法使用单线程顺序计算每个电池的样品熵序列，适用于小规模数据或调试场景
+// 计算结果存储在 SampEnMatrix 字段中
 func (d *Detector) ComputeSingle() error {
 	vol := mathmethod.ConvertTo2DShared(d.records.voltage, d.records.cellCount, d.records.recordCount)
 	sampEnResult := make([][]float64, 0)
@@ -130,7 +133,11 @@ func (d *Detector) ComputeSingle() error {
 	return nil
 }
 
-// ComputeSingle 使用滑动窗口计算电压序列的样品熵, 使用 goroutine 进行多核优化
+// Compute 使用滑动窗口计算电压序列的样品熵, 使用 goroutine 进行多核优化
+//
+// 该方法利用多线程并行计算每个电池的样品熵序列，适用于大规模数据处理
+// 使用 errgroup 进行错误处理和任务协调，每个电池的计算在单独的 goroutine 中进行
+// 计算结果存储在 SampEnMatrix 字段中
 func (d *Detector) Compute() error {
 	vol := mathmethod.ConvertTo2DShared(d.records.voltage, d.records.cellCount, d.records.recordCount)
 	sampEnResult := make([][]float64, d.records.cellCount)
@@ -230,6 +237,12 @@ func (d *Detector) Compute() error {
 	return nil
 }
 
+// Check 检测电池电压序列中的故障
+//
+// 该方法首先计算所有电池的样品熵序列，然后对每个电池进行故障检测
+// 检测原理是比较目标电池的样品熵与其他电池样品熵的差异
+// 当差异同时满足绝对阈值和相对阈值条件，且连续出现超过 faultThreshold 次时，判定为故障
+// 故障信息存储在 FaultInfos 字段中
 func (d *Detector) Check() error {
 	if !d.HasRecords {
 		return fmt.Errorf("No records.")

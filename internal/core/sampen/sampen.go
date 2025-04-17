@@ -1,3 +1,5 @@
+// Package sampen provides functionality for calculating Sample Entropy (SampEn) of time series data.
+// SampEn is a measure of complexity that quantifies the unpredictability of fluctuations in a time series.
 package sampen
 
 import (
@@ -7,21 +9,31 @@ import (
 	"github.com/kio235/sampEn_SCFD_backend/internal/utils/mathmethod"
 )
 
+// SampEnCalc represents a Sample Entropy calculator.
+// It holds the parameters and data needed for SampEn calculation.
 type SampEnCalc struct {
-	m           int
-	rCoeff      float64
-	voltageData []float64
-	n           int
-	sampEn      float64
-	computed    bool
+	m           int       // embedding dimension
+	rCoeff      float64   // tolerance coefficient
+	voltageData []float64 // time series data
+	n           int       // length of data
+	sampEn      float64   // calculated sample entropy value
+	computed    bool      // flag indicating if SampEn has been computed
 }
 
+// Clone creates a deep copy of the SampEnCalc instance.
+// This is useful when you need to preserve the original calculator state.
 func (c *SampEnCalc) Clone() *SampEnCalc {
 	vol := make([]float64, len(c.voltageData))
 	copy(vol, c.voltageData)
 	return &SampEnCalc{c.m, c.rCoeff, vol, c.n, c.sampEn, c.computed}
 }
 
+// NewSampEnCalc creates a new Sample Entropy calculator with specified parameters.
+// Parameters:
+//   - m: embedding dimension, must be >= 1
+//   - rCoeff: tolerance coefficient, must be > 0
+//
+// Returns a new SampEnCalc instance or an error if parameters are invalid.
 func NewSampEnCalc(m int, rCoeff float64) (*SampEnCalc, error) {
 	if m < 1 {
 		return nil, fmt.Errorf("m must >=1")
@@ -32,6 +44,11 @@ func NewSampEnCalc(m int, rCoeff float64) (*SampEnCalc, error) {
 	return &SampEnCalc{m: m, rCoeff: rCoeff}, nil
 }
 
+// LoadData loads time series data into the calculator.
+// The data length must be greater than m+1 for valid SampEn calculation.
+// This method resets the computed flag to false.
+//
+// Returns an error if the data length is insufficient.
 func (c *SampEnCalc) LoadData(voltageData []float64) error {
 	n := len(voltageData)
 	if n < c.m+1 {
@@ -44,6 +61,16 @@ func (c *SampEnCalc) LoadData(voltageData []float64) error {
 	return nil
 }
 
+// Compute calculates the Sample Entropy of the loaded time series data.
+// The calculation uses the parameters m (embedding dimension) and r (tolerance)
+// specified during initialization.
+//
+// Sample Entropy is defined as the negative natural logarithm of the conditional
+// probability that two sequences similar for m points remain similar at the next point.
+//
+// Returns:
+//   - sampEn: the calculated Sample Entropy value
+//   - error: if data is not loaded, has invalid standard deviation, or if B=0
 func (c *SampEnCalc) Compute() (sampEn float64, err error) {
 	if c.n < c.m+1 {
 		return 0, fmt.Errorf("no data, use LoadData() first")
